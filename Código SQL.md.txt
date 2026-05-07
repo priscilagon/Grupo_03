@@ -1,0 +1,498 @@
+CREATE DATABASE IF NOT EXISTS vacinacao_db;
+USE vacinacao_db;
+
+-- ==========================================================
+-- 1. CRIAÇÃO DAS TABELAS (DDL)
+-- ==========================================================
+
+CREATE TABLE usuario(
+    id_usuario INT PRIMARY KEY AUTO_INCREMENT,
+    nome_usuario VARCHAR(100) NOT NULL,
+    login_usuario VARCHAR(100) NOT NULL UNIQUE,
+    senha_usuario VARCHAR(255) NOT NULL,
+    perfil_usuario ENUM('Admin', 'Enfermeiro', 'Recepcionista', 'Logística') NOT NULL,
+    status_perfil ENUM('ativo', 'inativo') DEFAULT 'ativo'
+);
+
+CREATE TABLE faixa_etaria(
+    id_faixa INT PRIMARY KEY AUTO_INCREMENT,
+    descricao VARCHAR(50) NOT NULL,
+    idade_min INT NOT NULL,
+    idade_max INT NOT NULL
+);
+
+CREATE TABLE cargo_profissional(
+    id_cargo INT PRIMARY KEY AUTO_INCREMENT,
+    nome_cargo VARCHAR(60) NOT NULL UNIQUE
+);
+
+CREATE TABLE posto_saude(
+    id_posto INT PRIMARY KEY AUTO_INCREMENT,
+    nome_posto VARCHAR(100) NOT NULL,
+    logradouro VARCHAR(100) NOT NULL,
+    numero VARCHAR(10) NOT NULL,
+    bairro VARCHAR(50) NOT NULL, 
+    cidade VARCHAR(50) DEFAULT 'Manaus',
+    cep VARCHAR(9) NOT NULL,
+    telefone VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE paciente(
+    id_paciente INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(120) NOT NULL,
+    cpf VARCHAR(14) UNIQUE NOT NULL,
+    cns VARCHAR(15) UNIQUE NOT NULL,
+    data_nascimento DATE NOT NULL,
+    sexo ENUM('M', 'F') NOT NULL,
+    telefone VARCHAR(20) NOT NULL,
+    logradouro VARCHAR(100) NOT NULL,
+    numero VARCHAR(10) NOT NULL,
+    bairro VARCHAR(50) NOT NULL, 
+    cidade VARCHAR(50) DEFAULT 'Manaus',
+    cep VARCHAR(9) NOT NULL,
+    id_faixa INT NOT NULL,
+    FOREIGN KEY(id_faixa) REFERENCES faixa_etaria(id_faixa)
+);
+
+CREATE TABLE profissional(
+    id_profissional INT PRIMARY KEY AUTO_INCREMENT,
+    nome VARCHAR(120) NOT NULL,
+    cpf VARCHAR(14) NOT NULL UNIQUE,
+    registro_conselho VARCHAR(30) NULL,
+    id_cargo INT NOT NULL,
+    id_usuario INT UNIQUE NOT NULL, 
+    id_posto INT NOT NULL,
+    FOREIGN KEY(id_cargo) REFERENCES cargo_profissional(id_cargo),
+    FOREIGN KEY(id_usuario) REFERENCES usuario(id_usuario),
+    FOREIGN KEY(id_posto) REFERENCES posto_saude(id_posto)
+);
+
+CREATE TABLE vacina(
+    id_vacina INT PRIMARY KEY AUTO_INCREMENT,
+    nome_vacina VARCHAR(100) NOT NULL,
+    fabricante_vacina VARCHAR(100) NOT NULL,
+    doses_necessarias INT DEFAULT 1,
+    intervalo_doses_dias INT NOT NULL, 
+    descricao_vacina TEXT NOT NULL
+);
+
+CREATE TABLE lote_vacina(
+    id_lote INT PRIMARY KEY AUTO_INCREMENT,
+    numero_lote VARCHAR(50) NOT NULL UNIQUE,
+    data_validade DATE NOT NULL,
+    quantidade_inicial INT NOT NULL,
+    quantidade_atual INT NOT NULL,
+    id_vacina INT NOT NULL,
+    id_posto INT NOT NULL,
+    FOREIGN KEY(id_vacina) REFERENCES vacina(id_vacina),
+    FOREIGN KEY(id_posto) REFERENCES posto_saude(id_posto)
+);
+
+CREATE TABLE aplicacao_vacina(
+    id_aplicacao INT PRIMARY KEY AUTO_INCREMENT,
+    data_aplicacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    dose_aplicada VARCHAR(20) NOT NULL, 
+    id_paciente INT NOT NULL,
+    id_profissional INT NOT NULL,
+    id_lote INT NOT NULL,
+    id_posto INT NOT NULL,
+    FOREIGN KEY(id_paciente) REFERENCES paciente(id_paciente),
+    FOREIGN KEY(id_profissional) REFERENCES profissional(id_profissional),
+    FOREIGN KEY(id_lote) REFERENCES lote_vacina(id_lote),
+    FOREIGN KEY(id_posto) REFERENCES posto_saude(id_posto)
+);
+
+CREATE TABLE agendamento(
+    id_agendamento INT PRIMARY KEY AUTO_INCREMENT,
+    data_agendada DATE NOT NULL,
+    status_agendamento ENUM('pendente', 'concluido', 'faltoso') DEFAULT 'pendente',
+    id_paciente INT NOT NULL,
+    id_vacina INT NOT NULL,
+    id_posto INT NOT NULL,
+    FOREIGN KEY(id_paciente) REFERENCES paciente(id_paciente),
+    FOREIGN KEY(id_vacina) REFERENCES vacina(id_vacina),
+    FOREIGN KEY(id_posto) REFERENCES posto_saude(id_posto)
+);
+
+CREATE TABLE reacao_adversa(
+    id_reacao INT PRIMARY KEY AUTO_INCREMENT,
+    descricao_reacao TEXT NOT NULL,
+    gravidade ENUM('leve', 'moderada', 'grave') DEFAULT 'leve',
+    data_relato DATE NOT NULL,
+    id_aplicacao INT NOT NULL,
+    FOREIGN KEY(id_aplicacao) REFERENCES aplicacao_vacina(id_aplicacao)
+);
+
+-- ==========================================================
+-- 2. INSERÇÃO DE DADOS (DML)
+-- ==========================================================
+
+-- FAIXA ETÁRIA 
+INSERT INTO faixa_etaria (descricao, idade_min, idade_max) VALUES 
+('Criança', 0, 12), ('Adolescente', 13, 17), ('Adulto', 18, 59), ('Idoso', 60, 120);
+
+-- CARGOS
+INSERT INTO cargo_profissional (nome_cargo) VALUES 
+('Enfermeiro(a)'), ('Técnico de Enfermagem'), ('Médico(a) Pediatra'), ('Médico(a) Clínico'),
+('Digitador(a)'), ('Recepcionista'), ('Gerente de Unidade'), ('Estoquista'), ('ACS'), ('Farmacêutico(a)'), 
+('Auxiliar Administrativo'), ('Vigilante'), ('Coordenador'), ('Estagiário'), ('Infectologista'),
+('Técnico Logística'), ('Supervisor'), ('Analista'), ('Bioquímico'), ('Diretor'),
+('Psicólogo(a)'), ('Assistente Social'), ('Motorista'), ('Auxiliar de Limpeza'),
+('Odontólogo(a)'), ('Auxiliar de Saúde Bucal'), ('Nutricionista'), ('Fisioterapeuta'),
+('Fonoaudiólogo(a)'), ('Técnico de TI');
+
+-- USUÁRIOS
+INSERT INTO usuario (nome_usuario, login_usuario, senha_usuario, perfil_usuario) VALUES 
+('Admin Geral', 'admin', 'pass123', 'Admin'), ('Ana Silva', 'ana.enf', 'pass123', 'Enfermeiro'),
+('João Souza', 'joao.log', 'pass123', 'Logística'), ('Carla Dias', 'carla.rec', 'pass123', 'Recepcionista'),
+('Marcos Lima', 'marcos.enf', 'pass123', 'Enfermeiro'), ('Beatriz Santos', 'bea.rec', 'pass123', 'Recepcionista'),
+('Ricardo Melo', 'ricardo.adm', 'pass123', 'Admin'), ('Juliana Costa', 'ju.log', 'pass123', 'Logística'),
+('Pedro Rocha', 'pedro.enf', 'pass123', 'Enfermeiro'), ('Fernanda Lima', 'fer.rec', 'pass123', 'Recepcionista'),
+('Gabriel Cruz', 'gabriel.enf', 'pass123', 'Enfermeiro'), ('Larissa Gomes', 'lari.log', 'pass123', 'Logística'),
+('Hugo Sales', 'hugo.rec', 'pass123', 'Recepcionista'), ('Camila Nogueira', 'mila.enf', 'pass123', 'Enfermeiro'),
+('Vitor Ramos', 'vitor.adm', 'pass123', 'Admin'), ('Amanda Reis', 'amanda.log', 'pass123', 'Logística'),
+('Sérgio Paiva', 'sergio.rec', 'pass123', 'Recepcionista'), ('Letícia Farias', 'leticia.enf', 'pass123', 'Enfermeiro'),
+('Rafael Torres', 'rafa.log', 'pass123', 'Logística'), ('Daniela Viana', 'dani.rec', 'pass123', 'Recepcionista'),
+('Luciana Rocha', 'luciana.enf', 'pass123', 'Enfermeiro'), ('Carlos Mendes', 'carlos.log', 'pass123', 'Logística'),
+('Marina Silva', 'marina.rec', 'pass123', 'Recepcionista'), ('Thiago Nunes', 'thiago.adm', 'pass123', 'Admin'),
+('Beatriz Costa', 'beatriz.enf', 'pass123', 'Enfermeiro'), ('Felipe Alves', 'felipe.log', 'pass123', 'Logística'),
+('Renata Moura', 'renata.rec', 'pass123', 'Recepcionista'), ('Bruno Carvalho', 'bruno.enf', 'pass123', 'Enfermeiro'),
+('Patrícia Gomes', 'patricia.rec', 'pass123', 'Recepcionista'), ('Eduardo Lima', 'eduardo.log', 'pass123', 'Logística');
+
+-- POSTO SAÚDE
+INSERT INTO posto_saude (nome_posto, logradouro, numero, bairro, cidade, cep, telefone) VALUES 
+('UBS Nilton Lins', 'Av. Professor Nilton Lins', '3259', 'Flores', 'Manaus', '69058-030', '(92) 3211-0001'),
+('UBS Sálvio Belota', 'Rua Samambaia', '12', 'Santa Etelvina', 'Manaus', '69059-450', '(92) 3211-0002'),
+('UBS Arthur Virgílio', 'Rua das Flores', '100', 'Tarumã', 'Manaus', '69041-360', '(92) 3211-0003'),
+('UBS Leonor de Freitas', 'Av. Brasil', '15', 'Compensa', 'Manaus', '69035-110', '(92) 3211-0004'),
+('UBS Megumo Kado', 'Rua 15 de Novembro', '45', 'Educandos', 'Manaus', '69074-000', '(92) 3211-0005'),
+('UBS Mansour Bulbol', 'Av. Desembargador João Machado', '120', 'Alvorada', 'Manaus', '69043-000', '(92) 3211-0006'),
+('UBS Deodato de Miranda', 'Rua Padre João de Araújo', '88', 'Cidade Nova', 'Manaus', '69090-001', '(92) 3211-0007'),
+('UBS José Rayol', 'Av. Constantino Nery', '3500', 'Chapada', 'Manaus', '69050-001', '(92) 3211-0008'),
+('UBS Balbina Mestrinho', 'Rua Duque de Caxias', '200', 'Centro', 'Manaus', '69005-000', '(92) 3211-0009'),
+('UBS Gebes Medeiros', 'Rua Pirarucu', '560', 'Jorge Teixeira', 'Manaus', '69088-000', '(92) 3211-0010'),
+('UBS Waldir Bugalho', 'Rua das Camélias', '15', 'Jorge Teixeira', 'Manaus', '69088-010', '(92) 3211-0011'),
+('UBS Silas Santos', 'Rua 25', '300', 'São José', 'Manaus', '69085-000', '(92) 3211-0012'),
+('UBS Lindalva Damasceno', 'Estrada do Turismo', '1500', 'Tarumã', 'Manaus', '69041-010', '(92) 3211-0013'),
+('UBS Alfredo Campos', 'Rua Visconde de Itanhaém', '22', 'Zumbi', 'Manaus', '69084-050', '(92) 3211-0014'),
+('UBS Amazonas Palhano', 'Rua Projetada', '10', 'São José', 'Manaus', '69085-100', '(92) 3211-0015'),
+('UBS Áugias Gadelha', 'Rua 15', '140', 'Cidade Nova', 'Manaus', '69090-120', '(92) 3211-0016'),
+('UBS Morro da Liberdade', 'Rua São Benedito', '10', 'Morro da Liberdade', 'Manaus', '69074-500', '(92) 3211-0017'),
+('UBS Almirante Antunes', 'Rua Padre Agostinho Caballero', '250', 'Santo Antônio', 'Manaus', '69029-000', '(92) 3211-0018'),
+('UBS Ivone Lima', 'Av. Cosme Ferreira', '4500', 'Coroado', 'Manaus', '69082-000', '(92) 3211-0019'),
+('UBS Luiz Montenegro', 'Rua Professora Elza de Queiroz', '5', 'Lirio do Vale', 'Manaus', '69038-000', '(92) 3211-0020'),
+('UBS Santa Luzia', 'Rua Santa Luzia', 'S/N', 'Santa Luzia', 'Manaus', '69074-000', '(92) 3211-0021'),
+('UBS Japiim', 'Rua 31 de Março', '100', 'Japiim', 'Manaus', '69077-000', '(92) 3211-0022'),
+('UBS Mauazinho', 'Av. Rio Negro', '50', 'Mauazinho', 'Manaus', '69075-000', '(92) 3211-0023'),
+('UBS Armando Mendes', 'Rua Ouro Preto', '15', 'Armando Mendes', 'Manaus', '69089-000', '(92) 3211-0024'),
+('UBS Redenção', 'Rua Gurupi', '22', 'Redenção', 'Manaus', '69047-000', '(92) 3211-0025'),
+('UBS Bairro da Paz', 'Av. Esperança', '12', 'Bairro da Paz', 'Manaus', '69048-000', '(92) 3211-0026'),
+('UBS Nova Esperança', 'Rua Padre Manoel', '300', 'Nova Esperança', 'Manaus', '69037-000', '(92) 3211-0027'),
+('UBS Santo Agostinho', 'Rua São Pedro', '45', 'Santo Agostinho', 'Manaus', '69036-000', '(92) 3211-0028'),
+('UBS São Jorge', 'Rua Amâncio de Miranda', '11', 'São Jorge', 'Manaus', '69033-000', '(92) 3211-0029'),
+('UBS Glória', 'Rua Osvaldo Cruz', '99', 'Glória', 'Manaus', '69027-000', '(92) 3211-0030');
+
+-- PROFISSIONAL (Organizado com diferentes cargos e conselhos preenchidos corretamente)
+INSERT INTO profissional (nome, cpf, registro_conselho, id_cargo, id_usuario, id_posto) VALUES 
+('Admin Sistema', '000.000.000-00', NULL, 7, 1, 1), -- Gerente
+('Ana Silva', '001.001.001-01', 'COREN-AM 1001', 1, 2, 1), -- Enfermeiro(a)
+('João Souza', '002.002.002-02', NULL, 16, 3, 1), -- Técnico Logística
+('Carla Dias', '003.003.003-03', NULL, 6, 4, 1), -- Recepcionista
+('Marcos Lima', '004.004.004-04', 'COREN-AM 1004', 1, 5, 2), -- Enfermeiro(a)
+('Beatriz Santos', '005.005.005-05', NULL, 6, 6, 2), -- Recepcionista
+('Ricardo Melo', '007.007.007-00', 'CRM-AM 7007', 4, 7, 3), -- Médico(a) Clínico
+('Juliana Costa', '006.006.006-06', 'CRF-AM 3008', 10, 8, 3), -- Farmacêutico(a)
+('Pedro Rocha', '007.007.007-07', 'COREN-AM 1007', 1, 9, 3), -- Enfermeiro(a)
+('Fernanda Lima', '008.008.008-08', NULL, 6, 10, 3), -- Recepcionista
+('Gabriel Cruz', '009.009.009-09', 'COREN-AM 1009', 1, 11, 4), -- Enfermeiro(a)
+('Larissa Gomes', '010.010.010-10', NULL, 16, 12, 4), -- Técnico Logística
+('Hugo Sales', '011.011.011-11', NULL, 6, 13, 5), -- Recepcionista
+('Camila Nogueira', '012.012.012-12', 'COREN-AM 1012', 1, 14, 5), -- Enfermeiro(a)
+('Vitor Ramos', '015.015.015-00', 'CRO-AM 9015', 25, 15, 6), -- Odontólogo(a)
+('Amanda Reis', '015.015.015-11', NULL, 16, 16, 6), -- Técnico Logística
+('Sérgio Paiva', '013.013.013-13', NULL, 6, 17, 6), -- Recepcionista
+('Letícia Farias', '014.014.014-14', 'COREN-AM 1014', 1, 18, 6), -- Enfermeiro(a)
+('Rafael Torres', '015.015.015-15', 'CREFITO-AM 5019', 28, 19, 7), -- Fisioterapeuta
+('Daniela Viana', '016.016.016-16', NULL, 6, 20, 7), -- Recepcionista
+('Luciana Rocha', '021.021.021-21', 'COREN-AM 2021', 1, 21, 21), -- Enfermeiro(a)
+('Carlos Mendes', '022.022.022-22', 'CRESS-AM 1022', 22, 22, 22), -- Assistente Social
+('Marina Silva', '023.023.023-23', NULL, 6, 23, 23), -- Recepcionista
+('Thiago Nunes', '024.024.024-24', 'CRP-AM 1124', 21, 24, 24), -- Psicólogo(a)
+('Beatriz Costa', '025.025.025-25', 'COREN-AM 2025', 1, 25, 25), -- Enfermeiro(a)
+('Felipe Alves', '026.026.026-26', 'CRN-AM 8026', 27, 26, 26), -- Nutricionista
+('Renata Moura', '027.027.027-27', NULL, 6, 27, 27), -- Recepcionista
+('Bruno Carvalho', '028.028.028-28', 'COREN-AM 2028', 1, 28, 28), -- Enfermeiro(a)
+('Patrícia Gomes', '029.029.029-29', NULL, 6, 29, 29), -- Recepcionista
+('Eduardo Lima', '030.030.030-30', NULL, 16, 30, 30); -- Técnico Logística
+
+-- PACIENTE
+INSERT INTO paciente (nome, cpf, cns, data_nascimento, sexo, telefone, logradouro, numero, bairro, cidade, cep, id_faixa) VALUES 
+('Mário Andrade', '111.111.111-11', '700123456789001', '1985-05-20', 'M', '(92) 98111-0001', 'Rua Recife', '100', 'Flores', 'Manaus', '69058-000', 3),
+('Lúcia Veríssimo', '222.222.222-22', '700123456789002', '2015-10-12', 'F', '(92) 98111-0002', 'Av. Sete de Setembro', '450', 'Centro', 'Manaus', '69005-000', 1),
+('Roberto Carlos', '333.333.333-33', '700123456789003', '1940-04-19', 'M', '(92) 98111-0003', 'Rua Ipanema', '20', 'Alvorada', 'Manaus', '69042-000', 4),
+('Aline Moraes', '444.444.444-44', '700123456789004', '2008-08-30', 'F', '(92) 98111-0004', 'Rua F', '500', 'Cidade Nova', 'Manaus', '69090-000', 2),
+('Tiago Leifert', '555.555.555-55', '700123456789005', '1980-01-15', 'M', '(92) 98111-0005', 'Av. do Turismo', '1010', 'Ponta Negra', 'Manaus', '69037-000', 3),
+('Sandra Annenberg', '666.666.666-66', '700123456789006', '1968-06-05', 'F', '(92) 98111-0006', 'Rua Maceió', '88', 'Adrianópolis', 'Manaus', '69057-000', 3),
+('Felipe Neto', '777.777.777-77', '700123456789007', '1988-01-21', 'M', '(92) 98111-0007', 'Ramal do Guedes', '15', 'Tarumã', 'Manaus', '69041-000', 3),
+('Marta Vieira', '888.888.888-88', '700123456789008', '1986-02-19', 'F', '(92) 98111-0008', 'Rua Cupiúba', '12', 'Zumbi', 'Manaus', '69084-000', 3),
+('Paulo Gustavo', '999.999.999-99', '700123456789009', '1978-10-30', 'M', '(92) 98111-0009', 'Rua Brasil', '300', 'Compensa', 'Manaus', '69035-000', 3),
+('Ivete Sangalo', '123.456.789-01', '700123456789010', '1972-05-27', 'F', '(92) 98111-0010', 'Av. André Araújo', '2000', 'Aleixo', 'Manaus', '69060-000', 3),
+('Neymar Júnior', '234.567.890-12', '700123456789011', '1992-02-05', 'M', '(92) 98111-0011', 'Rua do Comércio', '45', 'Parque 10', 'Manaus', '69054-000', 3),
+('Anitta Machado', '345.678.901-23', '700123456789012', '1993-03-30', 'F', '(92) 98111-0012', 'Av. Djalma Batista', '150', 'Chapada', 'Manaus', '69050-000', 3),
+('Zeca Pagodinho', '456.789.012-34', '700123456789013', '1959-02-04', 'M', '(92) 98111-0013', 'Rua Inocêncio de Araújo', '77', 'Educandos', 'Manaus', '69070-000', 4),
+('Marília Mendonça', '567.890.123-45', '700123456789014', '1995-07-22', 'F', '(92) 98111-0014', 'Av. Constantino Nery', '33', 'Chapada', 'Manaus', '69050-001', 3),
+('Chico Buarque', '678.901.234-56', '700123456789015', '1944-06-19', 'M', '(92) 98111-0015', 'Rua Leonardo Malcher', '10', 'Aparecida', 'Manaus', '69010-000', 4),
+('Fernanda Montenegro', '789.012.345-67', '700123456789016', '1929-10-16', 'F', '(92) 98111-0016', 'Rua Pe. Agostinho Caballero', '202', 'São Raimundo', 'Manaus', '69027-000', 4),
+('Lázaro Ramos', '890.123.456-78', '700123456789017', '1978-11-01', 'M', '(92) 98111-0017', 'Av. Rodrigo Otávio', '50', 'Japiim', 'Manaus', '69067-000', 3),
+('Taís Araújo', '901.234.567-89', '700123456789018', '1978-11-25', 'F', '(92) 98111-0018', 'Rua Polivalente', '90', 'Japiim', 'Manaus', '69067-001', 3),
+('Whindersson Nunes', '012.345.678-90', '700123456789019', '1995-01-05', 'M', '(92) 98111-0019', 'Av. Vivenda do Pontal', '1', 'Tarumã', 'Manaus', '69041-010', 3),
+('Gisele Bündchen', '987.654.321-00', '700123456789020', '1980-07-20', 'F', '(92) 98111-0020', 'Av. Coronel Teixeira', '2500', 'Ponta Negra', 'Manaus', '69037-000', 3),
+('Alice Albuquerque', '121.212.121-21', '700123456789021', '2019-03-10', 'F', '(92) 98222-0021', 'Rua Urucará', '15', 'Cachoeirinha', 'Manaus', '69065-000', 1),
+('Bernardo Silva', '122.222.122-22', '700123456789022', '2010-07-22', 'M', '(92) 98222-0022', 'Rua Borba', '20', 'Cachoeirinha', 'Manaus', '69065-010', 2),
+('Clara Azevedo', '123.232.123-23', '700123456789023', '2005-11-05', 'F', '(92) 98222-0023', 'Av. das Torres', '100', 'Cidade Nova', 'Manaus', '69090-000', 2),
+('Davi Lucca', '124.242.124-24', '700123456789024', '1995-02-18', 'M', '(92) 98222-0024', 'Rua São João', '300', 'São Lázaro', 'Manaus', '69073-000', 3),
+('Elisa Martins', '125.252.125-25', '700123456789025', '1982-09-30', 'F', '(92) 98222-0025', 'Rua 5', '55', 'Alvorada', 'Manaus', '69042-000', 3),
+('Fernando Diniz', '126.262.126-26', '700123456789026', '1955-12-12', 'M', '(92) 98222-0026', 'Rua X', '88', 'Nova Cidade', 'Manaus', '69097-000', 4),
+('Gabriela Rocha', '127.272.127-27', '700123456789027', '1961-04-25', 'F', '(92) 98222-0027', 'Rua Y', '99', 'Nova Cidade', 'Manaus', '69097-010', 4),
+('Heitor Vila', '128.282.128-28', '700123456789028', '2022-01-01', 'M', '(92) 98222-0028', 'Av. Margarita', '1000', 'Nova Cidade', 'Manaus', '69097-200', 1),
+('Isabela Nogueira', '129.292.129-29', '700123456789029', '1990-08-14', 'F', '(92) 98222-0029', 'Rua Pará', '23', 'Nossa Sra das Graças', 'Manaus', '69053-000', 3),
+('João Pedro', '130.303.130-30', '700123456789030', '1975-06-08', 'M', '(92) 98222-0030', 'Rua Rio Branco', '14', 'São Geraldo', 'Manaus', '69053-100', 3);
+
+-- VACINA 
+INSERT INTO vacina (nome_vacina, fabricante_vacina, doses_necessarias, intervalo_doses_dias, descricao_vacina) VALUES 
+('BCG', 'FAP', 1, 0, 'Previne formas graves de tuberculose.'),
+('Hepatite B', 'Butantan', 3, 30, 'Protege contra vírus da Hepatite B.'),
+('Pentavalente', 'Biological E', 3, 60, 'Difteria, Tétano, Coqueluche, Hep B e Hib.'),
+('VIP (Poliomielite)', 'Sanofi', 3, 60, 'Vacina contra a paralisia infantil.'),
+('Pneumocócica 10V', 'GSK', 2, 60, 'Previne pneumonia e meningite.'),
+('Rotavírus', 'GSK', 2, 60, 'Protege contra diarreias graves.'),
+('Meningocócica C', 'Niterói', 2, 60, 'Protege contra meningite tipo C.'),
+('Febre Amarela', 'Bio-Manguinhos', 1, 0, 'Prevenção contra o vírus da febre amarela.'),
+('Tríplice Viral', 'Bio-Manguinhos', 2, 30, 'Sarampo, Caxumba e Rubéola.'),
+('DTP', 'Butantan', 1, 0, 'Reforço contra Difteria, Tétano e Coqueluche.'),
+('Hepatite A', 'Merck', 1, 0, 'Previne a hepatite A.'),
+('HPV', 'MSD', 2, 180, 'Protege contra o vírus HPV.'),
+('Meningocócica ACWY', 'GSK', 1, 0, 'Proteção contra quatro tipos de meningite.'),
+('Influenza (Gripe)', 'Butantan', 1, 365, 'Prevenção anual contra gripe.'),
+('Varicela', 'MSD', 1, 0, 'Protege contra a catapora.'),
+('Covid-19 (Pfizer)', 'Pfizer', 2, 21, 'Tecnologia mRNA para coronavírus.'),
+('Covid-19 (Coronavac)', 'Butantan', 2, 28, 'Vírus inativado contra COVID-19.'),
+('Covid-19 (Astrazeneca)', 'Fiocruz', 2, 90, 'Vetor viral contra COVID-19.'),
+('Dupla Adulto (dT)', 'Butantan', 1, 3650, 'Reforço contra Difteria e Tétano.'),
+('Antitetânica', 'Butantan', 1, 0, 'Urgência para prevenção de tétano.'),
+('Dengue (Qdenga)', 'Takeda', 2, 90, 'Vacina atenuada tetravalente contra a dengue.'),
+('Raiva Humana', 'Sanofi', 4, 7, 'Vacina inativada para profilaxia da raiva.'),
+('Febre Tifoide', 'Sanofi', 1, 0, 'Proteção contra febre tifoide.'),
+('Herpes Zóster', 'GSK', 2, 60, 'Prevenção contra o vírus varicela-zóster.'),
+('Cólera', 'Valneva', 2, 14, 'Vacina oral contra cólera.'),
+('Pólio Oral (VOP)', 'Bio-Manguinhos', 1, 0, 'Reforço oral contra poliomielite.'),
+('DTPa', 'GSK', 1, 0, 'Tríplice bacteriana acelular.'),
+('Meningocócica B', 'GSK', 2, 60, 'Proteção contra meningite tipo B.'),
+('VRS', 'Pfizer', 1, 0, 'Prevenção do Vírus Sincicial Respiratório.'),
+('Hepatite A e B', 'GSK', 3, 30, 'Vacina combinada para hepatite A e B.');
+
+-- LOTES 
+INSERT INTO lote_vacina (numero_lote, data_validade, quantidade_inicial, quantidade_atual, id_vacina, id_posto) VALUES 
+('LOTE001', '2026-12-01', 500, 450, 16, 1), ('LOTE002', '2025-05-20', 300, 280, 14, 1),
+('LOTE003', '2027-01-10', 1000, 900, 1, 2), ('LOTE004', '2026-08-15', 200, 150, 12, 3),
+('LOTE005', '2025-12-31', 600, 580, 16, 4), ('LOTE006', '2026-03-20', 400, 390, 8, 5),
+('LOTE007', '2027-06-01', 250, 200, 9, 6), ('LOTE008', '2025-09-12', 800, 750, 14, 7),
+('LOTE009', '2026-11-11', 150, 140, 17, 8), ('LOTE010', '2026-05-05', 350, 300, 18, 9),
+('LOTE011', '2025-02-28', 500, 490, 2, 10), ('LOTE012', '2026-10-10', 450, 400, 3, 11),
+('LOTE013', '2027-04-04', 600, 550, 4, 12), ('LOTE014', '2025-11-20', 700, 680, 5, 13),
+('LOTE015', '2026-09-09', 300, 250, 6, 14), ('LOTE016', '2026-07-07', 400, 380, 7, 15),
+('LOTE017', '2025-06-06', 200, 180, 10, 16), ('LOTE018', '2027-02-02', 150, 100, 11, 17),
+('LOTE019', '2026-01-01', 900, 850, 13, 18), ('LOTE020', '2026-12-31', 500, 400, 15, 19),
+('LOTE021', '2026-10-30', 200, 200, 21, 21), ('LOTE022', '2025-11-15', 100, 95, 22, 22),
+('LOTE023', '2027-05-20', 300, 300, 23, 23), ('LOTE024', '2026-12-10', 150, 140, 24, 24),
+('LOTE025', '2025-08-25', 250, 250, 25, 25), ('LOTE026', '2026-04-05', 500, 490, 26, 26),
+('LOTE027', '2027-01-15', 100, 100, 27, 27), ('LOTE028', '2026-09-22', 120, 110, 28, 28),
+('LOTE029', '2025-07-17', 400, 350, 29, 29), ('LOTE030', '2026-11-05', 250, 250, 30, 30);
+
+-- APLICAÇÕES 
+INSERT INTO aplicacao_vacina (id_paciente, id_profissional, id_lote, id_posto, dose_aplicada) VALUES 
+(1, 1, 1, 1, '1ª Dose'), (2, 4, 3, 2, 'Única'), (3, 8, 8, 7, 'Reforço'),
+(4, 10, 5, 4, '2ª Dose'), (5, 13, 6, 5, '1ª Dose'), (6, 1, 1, 1, 'Reforço'),
+(7, 4, 3, 2, '1ª Dose'), (8, 17, 7, 6, '2ª Dose'), (9, 11, 11, 10, '1ª Dose'),
+(10, 1, 2, 1, 'Única'), (11, 13, 6, 5, '2ª Dose'), (12, 17, 7, 6, '1ª Dose'),
+(13, 8, 8, 7, 'Única'), (14, 10, 5, 4, '1ª Dose'), (15, 11, 11, 10, 'Reforço'),
+(16, 1, 1, 1, '2ª Dose'), (17, 13, 6, 5, 'Única'), (18, 17, 7, 6, 'Reforço'),
+(19, 4, 3, 2, '2ª Dose'), (20, 8, 8, 7, '1ª Dose'),
+(21, 21, 21, 21, '1ª Dose'), (22, 25, 22, 22, '1ª Dose'), (23, 28, 24, 24, '1ª Dose'),
+(24, 21, 21, 21, '2ª Dose'), (25, 25, 25, 25, 'Única'), (26, 28, 24, 24, '1ª Dose'),
+(27, 21, 26, 26, 'Reforço'), (28, 25, 27, 27, 'Única'), (29, 28, 29, 29, 'Única'),
+(30, 21, 21, 21, '1ª Dose');
+
+-- AGENDAMENTOS 
+INSERT INTO agendamento (data_agendada, status_agendamento, id_paciente, id_vacina, id_posto) VALUES 
+('2026-05-10', 'pendente', 1, 16, 1), ('2026-05-15', 'pendente', 4, 16, 4),
+('2026-05-20', 'pendente', 5, 8, 5), ('2026-06-01', 'pendente', 7, 1, 2),
+('2026-05-12', 'concluido', 11, 8, 5), ('2026-05-18', 'pendente', 12, 9, 6),
+('2026-05-25', 'pendente', 14, 16, 4), ('2026-06-05', 'pendente', 19, 1, 2),
+('2026-05-30', 'pendente', 20, 14, 7), ('2026-04-01', 'faltoso', 2, 14, 2),
+('2026-06-10', 'pendente', 3, 14, 7), ('2026-06-12', 'pendente', 6, 16, 1),
+('2026-06-15', 'pendente', 8, 9, 6), ('2026-06-20', 'pendente', 9, 2, 10),
+('2026-07-01', 'pendente', 10, 3, 1), ('2026-07-05', 'pendente', 13, 4, 7),
+('2026-07-10', 'pendente', 15, 2, 10), ('2026-07-15', 'pendente', 16, 16, 1),
+('2026-07-20', 'pendente', 17, 8, 5), ('2026-07-25', 'pendente', 18, 9, 6),
+('2026-08-10', 'pendente', 21, 21, 21), ('2026-08-15', 'pendente', 22, 22, 22),
+('2026-09-01', 'pendente', 26, 24, 24), ('2026-05-20', 'pendente', 27, 26, 26),
+('2026-05-25', 'pendente', 28, 27, 27), ('2026-06-01', 'pendente', 29, 29, 29),
+('2026-06-10', 'pendente', 30, 21, 21), ('2026-04-15', 'faltoso', 23, 23, 23),
+('2026-05-05', 'concluido', 24, 21, 21), ('2026-10-10', 'pendente', 25, 25, 25);
+
+-- REAÇÕES ADVERSAS 
+INSERT INTO reacao_adversa (descricao_reacao, gravidade, data_relato, id_aplicacao) VALUES 
+('Febre leve e dor no braço', 'leve', '2026-04-29', 1), ('Dor de cabeça', 'leve', '2026-04-29', 4),
+('Vermelhidão no local', 'leve', '2026-04-30', 5), ('Náusea', 'moderada', '2026-04-30', 7),
+('Calafrios', 'leve', '2026-05-01', 9), ('Febre alta', 'moderada', '2026-05-01', 11),
+('Dor muscular', 'leve', '2026-05-02', 12), ('Fadiga', 'leve', '2026-05-02', 14),
+('Tontura', 'moderada', '2026-05-03', 15), ('Erupção cutânea', 'moderada', '2026-05-03', 16),
+('Sonolência', 'leve', '2026-05-04', 18), ('Inchaço local', 'leve', '2026-05-04', 20),
+('Pequeno nódulo', 'leve', '2026-05-05', 2), ('Mialgia', 'leve', '2026-05-05', 3),
+('Artralgia', 'moderada', '2026-05-06', 6), ('Síncope', 'grave', '2026-05-06', 8),
+('Sudorese', 'leve', '2026-05-07', 10), ('Palpitação', 'moderada', '2026-05-07', 13),
+('Prurido', 'leve', '2026-05-08', 17), ('Hipotensão', 'grave', '2026-05-08', 19),
+('Dor no local da injeção', 'leve', '2026-04-29', 21), ('Leve vermelhidão', 'leve', '2026-04-30', 22),
+('Fadiga moderada', 'moderada', '2026-05-01', 23), ('Cefaleia', 'leve', '2026-05-02', 24),
+('Dificuldade respiratória leve', 'grave', '2026-05-03', 25), ('Irritabilidade', 'leve', '2026-05-04', 26),
+('Tontura rápida', 'leve', '2026-05-05', 27), ('Vômito', 'moderada', '2026-05-06', 28),
+('Febre baixa', 'leve', '2026-05-07', 29), ('Sensibilidade', 'leve', '2026-05-08', 30);
+
+
+DELIMITER //
+
+-- =========================================================================================
+-- TRIGGER 1: Atualizar estoque após aplicação
+-- =========================================================================================
+-- OBJETIVO: Garantir que o inventário de vacinas seja atualizado em tempo real.
+-- LOGICA: Toda vez que um registro de aplicação de vacina é CRIADO (AFTER INSERT),
+--         a trigger localiza o lote utilizado e subtrai 1 da 'quantidade_atual'.
+-- POR QUE USAR: Evita que o estoque fique "mentiroso" e permite o controle de falta de insumos.
+-- =========================================================================================
+CREATE TRIGGER tr_atualizar_estoque_apos_aplicacao
+AFTER INSERT ON aplicacao_vacina
+FOR EACH ROW
+BEGIN
+    UPDATE lote_vacina
+    SET quantidade_atual = quantidade_atual - 1
+    WHERE id_lote = NEW.id_lote;
+END;
+//
+
+-- =========================================================================================
+-- TRIGGER 2: Impedir uso de lote vencido
+-- =========================================================================================
+-- OBJETIVO: Segurança do paciente e conformidade sanitária.
+-- LOGICA: ANTES (BEFORE) de salvar a aplicação, o sistema consulta a validade do lote.
+--         Se a data de validade for menor que a data de hoje (CURDATE), o MySQL gera um
+--         erro (SIGNAL SQLSTATE) e cancela a inserção dos dados.
+-- POR QUE USAR: Impede erros humanos críticos, como vacinar alguém com produto vencido.
+-- =========================================================================================
+CREATE TRIGGER tr_impedir_lote_vencido
+BEFORE INSERT ON aplicacao_vacina
+FOR EACH ROW
+BEGIN
+    DECLARE v_validade DATE;
+
+    SELECT data_validade INTO v_validade 
+    FROM lote_vacina 
+    WHERE id_lote = NEW.id_lote;
+
+    IF v_validade < CURDATE() THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Operação Cancelada: O lote selecionado está vencido.';
+    END IF;
+END;
+//
+
+-- =========================================================================================
+-- TRIGGER 3 (BÔNUS): Validação do Conselho Profissional
+-- =========================================================================================
+-- OBJETIVO: Integridade de dados para cargos administrativos vs. assistenciais.
+-- LOGICA: Ao cadastrar um profissional, a trigger verifica o nome do seu cargo.
+--         Se o cargo NÃO for de uma categoria que exija registro de classe (ex: Motorista),
+--         a trigger força o campo 'registro_conselho' para NULL, mesmo que o usuário 
+--         tenha tentado preencher algo.
+-- POR QUE USAR: Mantém o banco limpo, evitando registros de "conselho" fantasmas para
+--              cargos que não possuem conselho de classe.
+-- =========================================================================================
+CREATE TRIGGER tr_validar_conselho_insert
+BEFORE INSERT ON profissional
+FOR EACH ROW
+BEGIN
+    DECLARE v_nome_cargo VARCHAR(60);
+    
+    SELECT nome_cargo INTO v_nome_cargo 
+    FROM cargo_profissional 
+    WHERE id_cargo = NEW.id_cargo;
+
+    IF v_nome_cargo NOT IN (
+        'Assistente Social', 'Auxiliar de Saúde Bucal', 'Bioquímico', 
+        'Enfermeiro(a)', 'Farmacêutico(a)', 'Fisioterapeuta', 
+        'Fonoaudiólogo(a)', 'Infectologista', 'Médico(a) Clínico', 
+        'Médico(a) Pediatra', 'Nutricionista', 'Odontólogo(a)', 'Psicólogo(a)'
+    ) THEN
+        SET NEW.registro_conselho = NULL;
+    END IF;
+END;
+//
+
+-- =========================================================================================
+-- PROCEDURE 1: Previsão da Próxima Dose
+-- =========================================================================================
+-- OBJETIVO: Calcular automaticamente quando o paciente deve retornar.
+-- PARÂMETROS: Recebe o ID do paciente e o ID da vacina.
+-- FUNCIONAMENTO:
+--   1. Consulta na tabela 'vacina' o intervalo de dias e o total de doses necessárias.
+--   2. Conta quantas vezes aquele paciente já tomou aquela vacina específica.
+--   3. Se houver doses pendentes, soma o intervalo à data da última aplicação (DATE_ADD).
+--   4. Retorna mensagens informativas se o esquema estiver completo ou não iniciado.
+-- POR QUE USAR: Automatiza a agenda da equipe de enfermagem e evita erros de cálculo manual.
+-- =========================================================================================
+CREATE PROCEDURE sp_prever_proxima_dose(
+    IN p_id_paciente INT,
+    IN p_id_vacina INT
+)
+BEGIN
+    DECLARE v_intervalo INT;
+    DECLARE v_doses_totais INT;
+    DECLARE v_doses_aplicadas INT;
+    DECLARE v_ultima_aplicacao DATE;
+    DECLARE v_proxima_data DATE;
+
+    -- Pega as regras da vacina
+    SELECT intervalo_doses_dias, doses_necessarias 
+    INTO v_intervalo, v_doses_totais
+    FROM vacina 
+    WHERE id_vacina = p_id_vacina;
+
+    -- Verifica o histórico do paciente para esta vacina
+    SELECT COUNT(*), MAX(data_aplicacao)
+    INTO v_doses_aplicadas, v_ultima_aplicacao
+    FROM aplicacao_vacina av
+    JOIN lote_vacina lv ON av.id_lote = lv.id_lote
+    WHERE av.id_paciente = p_id_paciente AND lv.id_vacina = p_id_vacina;
+
+    -- Validações de retorno
+    IF v_doses_totais = 1 AND v_doses_aplicadas >= 1 THEN
+        SELECT 'Esquema de dose única já concluído.' AS Mensagem;
+        
+    ELSEIF v_doses_aplicadas = 0 THEN
+        SELECT 'Paciente ainda não recebeu a primeira dose.' AS Mensagem;
+        
+    ELSEIF v_doses_aplicadas >= v_doses_totais THEN
+        SELECT 'Esquema vacinal completo.' AS Mensagem;
+        
+    ELSE
+        -- Cálculo da data sugerida
+        SET v_proxima_data = DATE_ADD(v_ultima_aplicacao, INTERVAL v_intervalo DAY);
+        SELECT 
+            v_proxima_data AS data_sugerida,
+            (v_doses_aplicadas + 1) AS dose_sequencial,
+            v_intervalo AS dias_de_intervalo;
+    END IF;
+END;
+//
+
+DELIMITER ;
