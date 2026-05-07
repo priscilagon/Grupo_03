@@ -1,0 +1,82 @@
+-- comando select usado para visualizar as tabelas
+SELECT * FROM agendamento;
+
+SELECT * FROM aplicacao_vacina;
+
+SELECT * FROM cargo_profissional;
+
+SELECT * FROM faixa_etaria;
+
+SELECT * FROM lote_vacina;
+
+SELECT * FROM paciente;
+
+SELECT * FROM posto_saude;
+
+SELECT * FROM profissional;
+
+SELECT * FROM reacao_adversa;
+
+SELECT * FROM usuario;
+
+SELECT * FROM vacina;
+
+-- cosnsultas avançadas usadas 
+
+-- Consultas DQL (Data Query Language)
+-- consulta 01
+SELECT ps.nome_posto, COUNT(av.id_aplicacao) AS total_vacinas
+FROM posto_saude ps
+JOIN aplicacao_vacina av ON ps.id_posto = av.id_posto
+GROUP BY ps.nome_posto
+HAVING total_vacinas > 2; 
+
+-- consulta 02
+SELECT nome, data_nascimento, 
+       TIMESTAMPDIFF(YEAR, data_nascimento, CURDATE()) AS idade_atual
+FROM paciente
+ORDER BY idade_atual DESC;
+
+
+-- Consultas Avançadas
+-- Consultas (DQL)
+SELECT ps.nome_posto, COUNT(av.id_aplicacao) AS total_vacinas
+FROM posto_saude ps
+JOIN aplicacao_vacina av ON ps.id_posto = av.id_posto
+GROUP BY ps.nome_posto
+HAVING total_vacinas > 2; 
+
+SELECT nome, data_nascimento, 
+       TIMESTAMPDIFF(YEAR, data_nascimento, CURDATE()) AS idade_atual
+FROM paciente
+ORDER BY idade_atual DESC;
+
+-- Consultas (DML)
+UPDATE usuario 
+SET status_perfil = 'inativo'
+WHERE id_usuario NOT IN (SELECT id_usuario FROM profissional);
+
+UPDATE lote_vacina SET data_validade = DATE_ADD(data_validade, INTERVAL 1 YEAR) WHERE id_vacina = 16; 
+
+-- Consultas (DDL)
+ CREATE INDEX idx_paciente_cpf ON paciente(cpf); 
+
+ALTER TABLE paciente 
+ADD COLUMN data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+-- Consultas (DTL)
+START TRANSACTION;
+INSERT INTO aplicacao_vacina (id_paciente, id_profissional, id_lote, id_posto, dose_aplicada) 
+VALUES (1, 2, 1, 1, '1ª Dose');
+COMMIT; 
+
+START TRANSACTION; UPDATE agendamento SET status_agendamento = 'concluido' WHERE id_agendamento = 1; -- No phpMyAdmin, execute este SELECT junto com o bloco acima para ver a mudança "pendente" SELECT id_agendamento, status_agendamento FROM agendamento WHERE id_agendamento = 1; COMMIT; 
+
+-- Consultas (DCL)
+ CREATE USER 'recepcao_user'@'localhost' IDENTIFIED BY 'senha123';
+GRANT SELECT ON vacinacao_db.paciente TO 'recepcao_user'@'localhost';
+
+
+CREATE USER IF NOT EXISTS 'auxiliar_vacina'@'localhost' IDENTIFIED BY 'senha123';
+GRANT SELECT ON vacinacao_db.* TO 'auxiliar_vacina'@'localhost';
+SHOW GRANTS FOR 'auxiliar_vacina'@'localhost';
